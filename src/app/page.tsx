@@ -152,6 +152,8 @@ export default function Home() {
 						>
 							Prev
 						</button>
+
+						{currentPage}  of {totalPages}
 						
 						<button
 							onClick={() => setCurrentPage((cur) => cur + 1)}
