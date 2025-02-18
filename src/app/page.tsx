@@ -24,6 +24,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 export default function Home() {
 	const [query, setQuery] = useState("");
 	const deBounceValue = useDebounce(query, 1000);
+
 	const getUsers = useQuery({
 		queryKey: ["users"],
 		queryFn: async () => {
@@ -53,11 +54,10 @@ export default function Home() {
 	const currentUsers = getUsers?.data?.data
 		? getUsers?.data?.data.slice(indexOfFirstUser, indexOfLastUser)
 		: [];
-
 	const filter = (): User[] => {
 		let data = currentUsers;
-		if (deBounceValue) {
-			data = data.filter((user) =>
+		if (deBounceValue && getUsers.data?.data) {
+			data = getUsers?.data?.data.filter((user) =>
 				user.name.toLowerCase().includes(deBounceValue.toLowerCase())
 			);
 
@@ -152,9 +152,7 @@ export default function Home() {
 						>
 							Prev
 						</button>
-						<span>
-							Page {currentPage} of {totalPages}
-						</span>
+						
 						<button
 							onClick={() => setCurrentPage((cur) => cur + 1)}
 							disabled={currentPage === totalPages}
