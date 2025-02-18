@@ -1,101 +1,169 @@
-import Image from "next/image";
+"use client";
+import { useQuery } from "@tanstack/react-query";
+import axios, { isAxiosError } from "axios";
+import { toast } from "sonner";
+import useDebounce from "./hooks/useDebounce";
+import { useState } from "react";
+import { User } from "@/types";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+	const [query, setQuery] = useState("");
+	const deBounceValue = useDebounce(query, 1000);
+	const getUsers = useQuery({
+		queryKey: ["users"],
+		queryFn: async () => {
+			try {
+				const data: { data: User[] } = await axios.get(
+					"https://jsonplaceholder.typicode.com/users"
+				);
+				return data;
+			} catch (error) {
+				if (isAxiosError(error)) {
+					const errorData = error.response
+						? error.response.data.message
+						: error.message;
+					toast.error(errorData);
+					throw new Error(errorData);
+				}
+			}
+		},
+	});
+	const [currentPage, setCurrentPage] = useState(1);
+	const itemsPerPage = 5;
+	const totalUsers = getUsers?.data?.data ? getUsers?.data?.data.length : 0;
+	const totalPages = Math.ceil(totalUsers / itemsPerPage);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+	const indexOfLastUser = currentPage * itemsPerPage;
+	const indexOfFirstUser = indexOfLastUser - itemsPerPage;
+	const currentUsers = getUsers?.data?.data
+		? getUsers?.data?.data.slice(indexOfFirstUser, indexOfLastUser)
+		: [];
+
+	const filter = (): User[] => {
+		let data = currentUsers;
+		if (deBounceValue) {
+			data = data.filter((user) =>
+				user.name.toLowerCase().includes(deBounceValue.toLowerCase())
+			);
+
+			return data;
+		}
+		return data || [];
+	};
+
+	if (getUsers.isPending) {
+		return (
+			<div className="flex justify-center items-center h-[100dvh]">
+				<Loader2 className="animate-spin w-[40px] h-[40px] text-center stroke-3" />
+			</div>
+		);
+	}
+
+	if (getUsers.isError) {
+		return (
+			<div>
+				<h1 className="text-center text-3xl">
+					{getUsers.error.message || "error fetching data"}
+				</h1>
+			</div>
+		);
+	}
+
+	return (
+		<SidebarProvider>
+			<AppSidebar />
+			<SidebarInset>
+				<header className="flex border h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+					<div className="flex items-center gap-2 px-4">
+						<SidebarTrigger className="-ml-1" />
+            <h1>Users Page</h1>
+					</div>
+				</header>
+				<div className="p-4">
+					<div>
+						<input
+							type="text"
+							value={query}
+							onChange={(e) => {
+								setQuery(e.target.value);
+								setCurrentPage(1);
+							}}
+							className="outline-none rounded-[8px] h-[45px] border-[2px] border-gray-300 p-3 w-full max-w-[400px]"
+							placeholder="search for users"
+						/>
+					</div>
+
+					<h1 className="mt-2">All users</h1>
+					<Table className="border-[2px] mt-6 rounded-[3px]">
+						<TableHeader className="border-[2px]">
+							<TableRow className="">
+								<TableHead className="text-left">Name</TableHead>
+								<TableHead className="text-center">Surname</TableHead>
+								<TableHead className="text-center">Email</TableHead>
+								<TableHead className="text-center">Phone</TableHead>
+								<TableHead className="text-right">Address</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{filter().map((user, i: number) => {
+								return (
+									<TableRow key={i} className="h-[40px]">
+										<TableCell className="font-medium">
+											{user?.name}
+										</TableCell>
+										<TableCell className="text-center">
+											{user?.username}
+										</TableCell>
+										<TableCell className="text-center">
+											{user?.email}
+										</TableCell>
+										<TableCell className="text-center">
+											{user?.phone}
+										</TableCell>
+
+										<TableCell className="text-right">
+											{user?.address.city}, {user?.address?.city},
+										</TableCell>
+									</TableRow>
+								);
+							})}
+						</TableBody>
+					</Table>
+
+					<div className="flex justify-center items-center gap-4 mt-5">
+						<button
+							onClick={() => setCurrentPage((cur) => cur - 1)}
+							disabled={currentPage === 1}
+						>
+							Prev
+						</button>
+						<span>
+							Page {currentPage} of {totalPages}
+						</span>
+						<button
+							onClick={() => setCurrentPage((cur) => cur + 1)}
+							disabled={currentPage === totalPages}
+						>
+							Next
+						</button>
+					</div>
+				</div>
+			</SidebarInset>
+		</SidebarProvider>
+	);
 }
