@@ -59,7 +59,7 @@ export default function Home() {
 		if (deBounceValue && getUsers.data?.data) {
 			data = getUsers?.data?.data.filter((user) =>
 				user.name.toLowerCase().includes(deBounceValue.toLowerCase())
-			);
+			).slice(indexOfFirstUser, indexOfLastUser);
 
 			return data;
 		}
